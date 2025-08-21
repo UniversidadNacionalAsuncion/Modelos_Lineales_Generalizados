@@ -1,0 +1,465 @@
+---
+title: "Modelos Lineales Generalizados" # Título del documento
+subtitle: "Modelos de regresión lineal simple y múltiple en R"  # subtítulo del documento
+author: "Prof. Juan Ignacio Mereles"   # Autor del documento
+callout-appearance: simple
+format:
+  pdf: default
+  html:                                # Configuración específica para la salida en HTML
+    theme: cosmo                       # Tema visual para el documento HTML
+    toc: true                          # Habilitar la tabla de contenido (TOC)
+    toc-title: "Índice"                # Título de la tabla de contenido
+    toc-location: left                 # Ubicación de la tabla de contenido (izquierda)
+lang: es                               # Establecer el idioma del documento a español
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+:::{.callout-note}
+El modelo de regresión es un caso particular de un modelo lineal generalizado en donde el error $\epsilon$ se distribuye normalmente con media 0 (cero) y varianza constante ($\sigma^2$).
+:::
+
+# Regresión Lineal Simple
+
+<!--# Esta es una formula de latex, que indica una regresión lineal -->
+
+<!--# Este es otro comentario -->
+
+$$Y=\beta_0+\beta_1x+\epsilon$$
+
+## Supuestos en el modelo de regresión lineal simple
+
+i.  El modelo debe estar correctamente formulado. 
+
+$$
+    E(\epsilon)=0
+$$
+
+ii. **Homocedasticidad**. 
+$$
+    Var(\epsilon)=\sigma^2
+$$
+
+iii. **Independencia**. 
+$$
+     \operatorname{Cov}\left(\epsilon_i, \epsilon_j\right)=0 \quad \text { para } i \neq j
+     $$
+
+iv. **Distribución normal de los errores**. 
+$$
+    \epsilon \sim N\left(0, \sigma^2\right)
+    $$
+
+Bajo estos supuestos, el valor esperado de $Y$ para un valor dado de $x$
+es 
+$$
+E(Y) =\beta_0+\beta_1 x
+$$
+
+## Intervalos de confianza y prueba de hipótesis para $\beta_0$ y $\beta_1$
+
+$$
+H_0: \beta_1=0 \quad \text { vs } \quad H_1: \beta_1 \neq 0
+$$
+
+-   $H_0$ : No hay relación significativa entre $x$ e $Y$ (el
+    coeficiente $\beta_1$ es igual a cero).
+-   $H_1$ : Existe una relación significativa entre $x$ e $Y$ (el
+    coeficiente $\beta_1$ es distinto de cero).
+
+:::{.callout-important} 
+
+En la práctica esperamos rechazar la hipótesis nula para afirmar que el efecto de la variable $x$ sobre la respuesta $Y$ es significativo. Si no rechazamos la hipótesis nula, decimos que $x$ no tiene una influencia importante sobre $Y$.
+
+:::
+
+### Distribución del estadístico de prueba
+
+$$
+\epsilon_i \sim N\left(0, \sigma^2\right)
+$$
+
+Esto implica que los valores de $Y_i$ para cada valor $x_i$ siguen la
+distribución 
+
+$$
+Y_i \sim N\left(\beta_0+\beta_1 x_i, \sigma^2\right)
+$$
+
+El estadístico de prueba se calcula como 
+
+$$
+T=\frac{\hat{\beta}_1-\beta_1}{\sqrt{\operatorname{Var}\left(\hat{\beta}_1\right)}} = \frac{\hat{\beta}_1}{\sqrt{\operatorname{Var}\left(\hat{\beta}_1\right)}} \sim t_{n-2}
+$$
+
+donde $n$ representa el tamaño de la muestra.
+
+## Ejemplo completo de una regresión lineal simple
+
+**Análisis de datos con el data frame `cars`**
+
+Usaremos el conjunto de datos `cars`, disponible en **R**. Este data
+frame contiene dos variables:
+
+-   **speed**: velocidad del vehículo (en millas por hora).
+-   **dist**: distancia de frenado (en pies).
+
+**Exploración inicial de los datos**
+
+Visualizamos las dimensiones y un resumen de las variables contenidas.
+
+```{r}
+cars <- cars
+dim(cars)                  # Número de filas y columnas
+summary(cars)              # Resumen estadístico
+boxplot(cars, las = 1, col = "darkorange")              # Boxplot para identificar posibles valores atípicos
+library(ggplot2)
+
+data_cars <- data.frame(valores = c(cars$speed, cars$dist),
+                        variable = rep(c("Velocidad", "Distancia"),
+                                       each = 50))
+
+ggplot(data_cars, aes(y = variable, x = valores)) +
+  #geom_violin() +
+  geom_boxplot()
+
+library(car)
+Boxplot(cars)              # Para identificar la fila del atípico
+cars[49, ]
+subset(cars, dist == 120)  # Ubicación del valor atípico
+```
+
+**Gráfica de dispersión inicial**
+
+Representamos la relación entre la velocidad y la distancia de frenado.
+
+```{r}
+with(cars, plot(speed, dist, pch = 19, col = "darkred",
+                main = "Relación entre velocidad y distancia de frenado",
+                xlab = "Velocidad (mph)", 
+                ylab = "Distancia de Frenado (ft)"))
+```
+
+**Cálculo del coeficiente de correlación lineal de Pearson**
+
+El **coeficiente de correlación de Pearson** mide la **fuerza de la
+asociación lineal** entre las dos variables.
+
+```{r}
+coef_correlacion <- with(cars, cor(speed, dist))
+coef_correlacion
+```
+
+Este valor indica que existe una **fuerte relación lineal positiva**
+entre la velocidad y la distancia de frenado. El valor del coeficiente de correlación de Pearson es `r round(coef_correlacion, 2)`
+
+**Ajuste del modelo de regresión lineal**
+
+Ajustamos un modelo de **regresión lineal simple**, donde la variable
+respuesta es `dist` y la predictora es `speed`.
+
+```{r}
+regresion <- lm(dist ~ speed, data = cars)
+regresion
+```
+
+**Interpretación de los coeficientes**
+
+-   **Intercepto**: No tiene interpretación práctica en este contexto, ya que es negativo y no tiene sentido pensar en una velocidad de 0 mph.
+-   **Coeficiente de `speed`**: Por cada aumento de **una unidad en la velocidad** (1 mph), la **distancia de frenado aumenta en
+    aproximadamente 3.93 ft**.
+
+**Agregar la línea de regresión al gráfico de dispersión**
+
+```{r}
+with(cars, plot(speed, dist, pch = 19, col = "red",
+                main = "Curva de regresión entre Velocidad y Distancia"))
+abline(regresion, col = "blue")
+text(9, 80, expression(paste("dist = ", -17.579 + 3.932 * "speed")),
+     col = "blue")
+```
+
+Código oculto:
+
+```{r}
+#| echo: false
+with(cars, plot(speed, dist, pch = 19, col = "red", las = 1,
+                main = "Curva de regresión entre Velocidad y Distancia"))
+abline(regresion, col = "blue")
+text(9, 80, expression(paste("dist = ", -17.579 + 3.932 * "speed")),
+     col = "blue")
+```
+
+**Verificación de la significatividad de los coeficientes**
+
+$$
+H_0:\beta_1=0
+$$
+
+$$
+H_1: \beta_1\neq 0
+$$
+
+```{r}
+resumen <- summary(regresion)
+kableExtra::kbl(resumen$coefficients)
+```
+
+El **p-valor** asociado al coeficiente de `speed` es menor a 0.05, lo
+que indica que **hay evidencia suficiente** para afirmar que el
+coeficiente es diferente de cero. Esto sugiere que **la relación lineal
+es significativa**.
+
+El **coeficiente de determinación** ($R^2 = 0.6511$) indica que el
+modelo explica aproximadamente **65% de la variabilidad** en la
+distancia de frenado a partir de la velocidad.
+
+**Verificación de supuestos del modelo**
+
+**(1) Supuesto de Linealidad**
+
+```{r}
+library(car)
+crPlots(regresion)
+mean(residuals(regresion))  # La media de los residuos debería ser cercana a 0
+```
+
+Observamos que **no hay una desviación significativa de la linealidad**.
+
+**(2) Supuesto de normalidad de los residuos**
+
+```{r}
+# Calcular los residuos o errores
+residuos <- residuals(regresion)
+residuos
+
+# Calcular las estimaciones
+prediccion <- predict(regresion)
+prediccion
+
+# Otra forma de calcular el error
+error <- cars$dist - prediccion
+
+# Comparación entre residuos y errores
+cbind(residuos, error)
+
+# Histograma de los residuos
+hist(residuos, freq = FALSE, main = "Distribución de Residuos")
+curve(dnorm(x, mean = mean(residuos), sd = sd(residuos)), add = TRUE)
+```
+
+Hipótesis de normalidad de los errores
+
+$H_0:$ Los errores se distribuyen normalmente
+
+$H_1:$ Los errores no se distribuyen normalmente
+
+```{r}
+# Prueba de Shapiro-Wilk de normalidad
+shapiro.test(residuos)
+```
+
+
+El **test de Shapiro-Wilk** indica que **los residuos no siguen una distribución normal** al nivel de significación del 5%. No obstante, como el p valor no es muy diferente del nivel de significación, podríamos decir que los errores tienen distribución que no se aleja mucho de la normal.
+
+**(3) Supuesto de no autocorrelación**
+
+$H_0:$ Los errores son independientes ($\rho = 0$)
+
+$H_1:$ Los errores no son independientes ($\rho \neq 0$)
+
+```{r}
+plot(residuos, main = "Distribución de Residuos")
+library(lmtest)
+dwtest(regresion, alternative = "two.sided")
+```
+
+El **test de Durbin-Watson** sugiere que **no hay evidencia de
+autocorrelación** en los residuos. Es decir, los residuos son independientes.
+
+**(4) Supuesto de Homocedasticidad**
+
+$H_0:$ Existe homocedasticidad
+
+$H_1:$ No existe homocedasticidad
+
+```{r}
+plot(prediccion, residuos, pch = 19, col = "red",
+     main = "Residuos vs. Predicciones", xlab = "Predicciones", ylab = "Residuos")
+abline(h = 0, lty = 2)
+library(lmtest)
+bptest(regresion)
+```
+
+Aunque se observa una ligera variación en los residuos para valores
+altos de las predicciones, la **prueba de Breusch-Pagan** indica que
+**no hay evidencia de heterocedasticidad** al nivel del 5%.
+
+El modelo de **regresión lineal simple** entre la velocidad y la
+distancia de frenado es **significativo** y explica aproximadamente
+**65% de la variabilidad** en la distancia de frenado. Aunque los
+residuos no siguen una distribución normal estricta, los demás supuestos
+del modelo se cumplen adecuadamente. El análisis sugiere que a **mayor
+velocidad**, **mayor distancia de frenado**, lo que refuerza la
+importancia de controlar la velocidad para evitar accidentes.
+
+# Regresión Lineal Múltiple
+
+$$
+Y=\beta_0+\beta_1 X_1+\beta_2 X_2+\cdots+\beta_p X_p+\epsilon
+$$
+
+## Supuestos en el modelo de regresión lineal múltiple
+
+i.  Linealidad de la relación entre $Y$ y las $X$.
+
+ii. Homocedasticidad (Varianza constante de los errores)
+
+iii. Ausencia de Multicolinealidad
+
+iv. Independencia de los errores (No Autocorrelación)
+
+v.  Normalidad de los errores
+
+## Pruebas de hipótesis en un modelo de Regresión Lineal Múltiple
+
+**Pruebas de Hipótesis Individuales**
+
+Cada coeficiente $\beta_i$ se somete a una prueba de hipótesis para
+determinar si la variable independiente correspondiente tiene un efecto
+significativo en la variable dependiente $Y$.
+
+Las hipótesis para cada coeficiente $\beta_i$ son $$
+\begin{array}{ll}
+H_0: \beta_i=0 & \text { (La variable } X_i \text { no tiene efecto significativo) } \\
+H_1: \beta_i \neq 0 & \text { (La variable } X_i \text { tiene un efecto significativo) }
+\end{array}
+$$
+
+El estadístico utilizado para esta prueba es $$
+T_i=\frac{\hat{\beta}_i}{\text { Error estándar }\left(\hat{\beta}_i\right)}
+$$
+
+Este estadístico sigue una distribución $t$ con $n-p-1$ grados de
+libertad, donde $n$ es el tamaño de la muestra y $p$ es el número de
+variables predictoras.
+
+**Prueba de hipótesis global**
+
+La prueba global evalúa si el conjunto completo de variables predictoras
+tiene un impacto significativo en la variable dependiente $Y$. Las
+hipótesis para esta prueba son 
+$$
+\begin{gathered}
+H_0: \beta_1=\beta_2=\cdots=\beta_p=0 \quad \text { (Ninguna variable tiene efecto significativo) } \\
+H_1: \beta_j \neq 0 \quad \text { para al menos un } j=1,2, \ldots, p
+\end{gathered}
+$$
+
+## Bondad de ajuste para el modelo de regresión lineal múltiple
+
+**Coeficiente de determinación ajustado** $R_{a j}^2$
+
+$$
+R_{a j}^2=1-\left(\frac{n-1}{n-p-1}\right)\left(1-R^2\right)
+$$
+
+Siendo $n$ el tamaño de la muestra y $p$ el número de variables
+predictoras.
+
+## Ejemplo de regresión lineal múltiple
+
+**Análisis de datos con el data frame `mtautos`**
+
+Usaremos el **data frame `mtautos`** del paquete `datos`, que contiene
+información de automóviles, con las siguientes variables:
+
+-   **millas**: Millas recorridas por galón (mpg), que será nuestra
+    **variable respuesta**.
+-   **cilindrada**: Capacidad del motor (en pulgadas cúbicas), como una
+    de las **variables predictoras**.
+-   **peso**: Peso del automóvil (en libras), como otra **variable
+    predictora**.
+
+**Exploración inicial de los datos**
+
+Primero, examinamos la estructura del data frame y las estadísticas
+descriptivas de las variables.
+
+```{r}
+library(datos)
+mtautos <- datos::mtautos  # Cargar el dataset
+dim(mtautos)  # Dimensiones del data frame
+summary(mtautos)  # Resumen estadístico
+```
+
+**Gráfica de relación entre las variables**
+
+Representamos gráficamente la relación entre la variable respuesta
+(`millas`) y las predictoras (`cilindrada` y `peso`). Además, exploramos
+la relación entre las propias predictoras.
+
+```{r}
+# Visualizar las variables juntas
+with(mtautos, cbind(millas, cilindrada, peso))
+
+# Gráfico de dispersión para todas las combinaciones
+with(mtautos, plot(data.frame(cbind(cilindrada, peso, millas)),
+                   pch = 19, col = "blue",
+                   main = "Relaciones entre cilindrada, peso y millas"))
+```
+
+**Interpretación de la gráfica**
+
+Podemos observar que existe una **aparente asociación lineal** entre
+**millas** y las variables **cilindrada** y **peso**. Sin embargo,
+también se observa que **cilindrada** y **peso** están correlacionadas
+entre sí, lo que sugiere la posible presencia de **multicolinealidad**.
+
+**Cálculo de los coeficientes de correlación lineal de Pearson**
+
+Calculamos los **coeficientes de correlación de Pearson** para medir la
+fuerza de la asociación lineal entre cada par de variables.
+
+```{r}
+with(mtautos, cor(data.frame(cbind(cilindrada, peso, millas))))
+```
+
+Los resultados muestran que **todas las variables están altamente
+correlacionadas**.
+
+**Ajuste del modelo de regresión lineal múltiple**
+
+Ajustamos un **modelo de regresión lineal múltiple**, donde la respuesta
+es **millas** y las predictoras son **cilindrada** y **peso**.
+
+```{r}
+reg_mul <- lm(millas ~ cilindrada + peso, data = mtautos)
+summary(reg_mul)
+```
+
+**Interpretación del modelo**
+
+En este modelo:
+
+-   **El p-valor del coeficiente de `cilindrada`** indica que no es
+    **estadísticamente significativo** al nivel del 5%.
+-   **El coeficiente de `peso`** es significativo, lo que sugiere que
+    esta variable tiene una relación significativa con las millas
+    recorridas.
+
+**Ajuste del modelo simplificado**
+
+Dado que **cilindrada no es significativa**, generamos un **nuevo
+modelo** usando solo la variable `peso` como predictora.
+
+```{r}
+reg_simple <- lm(millas ~ peso, data = mtautos)
+summary(reg_simple)
+```
+
+El modelo simplificado muestra que la **variable `peso`** es un buen
+predictor de la eficiencia del combustible. Excluir variables no
+significativas ayuda a mejorar la **parcimonia del modelo**, evitando
+problemas de sobreajuste y multicolinealidad.
